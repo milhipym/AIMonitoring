@@ -1,0 +1,231 @@
+:root {
+    /* 사이버펑크 콘솔 색상 */
+    --bg-primary: #000000;
+    --bg-secondary: #0a0a0f;
+    --bg-tertiary: #111118;
+    --border-primary: #00d9ff;
+    --border-secondary: #00ffff;
+    
+    --text-primary: #ffffff;
+    --text-secondary: #a0e7ff;
+    --text-tertiary: #4a7a8f;
+    
+    --accent-cyan: #00ffff;
+    --accent-cyan-dark: #00d9ff;
+    --accent-purple: #b366ff;
+    --accent-pink: #ff00ff;
+    
+    --glow-cyan: rgba(0, 255, 255, 0.6);
+    --glow-cyan-strong: rgba(0, 255, 255, 0.9);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    background: radial-gradient(ellipse at center, #0a0a15 0%, #000000 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 24px;
+    line-height: 1.6;
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        linear-gradient(90deg, transparent 0%, rgba(0, 217, 255, 0.02) 50%, transparent 100%),
+        linear-gradient(0deg, transparent 0%, rgba(0, 217, 255, 0.02) 50%, transparent 100%);
+    background-size: 100px 100px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.control-panel {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px var(--glow-cyan), 0 0 40px var(--glow-cyan);
+}
+
+.scanline {
+    display: none;
+}
+
+.card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.1);
+}
+
+.card:hover {
+    border-color: var(--border-secondary);
+    box-shadow: 0 0 30px var(--glow-cyan), 0 8px 24px rgba(0, 0, 0, 0.6);
+    transform: translateY(-2px);
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-2 {
+    gap: 8px;
+}
+
+.gap-3 {
+    gap: 12px;
+}
+
+.gap-4 {
+    gap: 16px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
+
+.mb-6 {
+    margin-bottom: 24px;
+}
+
+.grid {
+    display: grid;
+    gap: 16px;
+}
+
+.grid-cols-1 {
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .md\:grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .md\:grid-cols-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* 애니메이션 */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.5));
+    }
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.8));
+    }
+}
+
+@keyframes rocketLaunch {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-10px) rotate(-5deg);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+@keyframes glowPulse {
+    0%, 100% {
+        box-shadow: 
+            0 0 5px rgba(0, 255, 255, 0.3),
+            0 0 10px rgba(0, 255, 255, 0.2);
+    }
+    50% {
+        box-shadow: 
+            0 0 10px rgba(0, 255, 255, 0.6),
+            0 0 20px rgba(0, 255, 255, 0.4),
+            0 0 30px rgba(0, 255, 255, 0.2);
+    }
+}
+
+.split-animation {
+    animation: rocketLaunch 2s ease-in-out infinite;
+}
+
+/* Jarvis 로더 애니메이션 */
+.jarvis-loader {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+}
+
+.jarvis-loader::before,
+.jarvis-loader::after {
+    content: '';
+    position: absolute;
+    border: 3px solid transparent;
+    border-radius: 50%;
+}
+
+.jarvis-loader::before {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-top-color: #00d9ff;
+    border-right-color: #00d9ff;
+    animation: jarvis-spin 1.5s linear infinite;
+}
+
+.jarvis-loader::after {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    border-top-color: #b366ff;
+    border-left-color: #b366ff;
+    animation: jarvis-spin 2s linear infinite reverse;
+}
+
+@keyframes jarvis-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

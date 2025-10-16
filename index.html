@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<title>프로미카 로그 모니터링</title>
+<link rel="stylesheet" href="css/common.css" />
+<link rel="stylesheet" href="css/contents.css" />
+<link rel="stylesheet" href="css/modal.css" />
+<link rel="stylesheet" href="css/card.css" />
+</head>
+<body>
+  <div class="cockpit">
+    <!-- 헤더 -->
+    <div class="cockpit-header">
+      <h1>◈ LOG MONITORING SYSTEM ◈</h1>
+      <p class="subtitle">REAL-TIME ANALYSIS DASHBOARD</p>
+    </div>
+
+    <!-- 메인 모니터 (대형 차트 화면) -->
+    <div class="main-monitor">
+      <div class="monitor-header">
+        <span class="monitor-title">◆ TEMPORAL LOG DISTRIBUTION</span>
+        <div class="monitor-indicators">
+          <span class="indicator active"></span>
+          <span class="indicator"></span>
+          <span class="indicator"></span>
+        </div>
+      </div>
+      <div class="monitor-body">
+        <div id="chart"></div>
+        <progress id="prog" max="100" value="0"></progress>
+        <div id="status">
+          <span class="status-text">SYSTEM READY - AWAITING LOG FILE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 하단 콘솔 패널 그리드 -->
+    <div class="console-grid">
+      <!-- 파일 로드 패널 -->
+      <div class="console-panel">
+        <div class="panel-header">▣ FILE LOADER</div>
+        <div class="panel-body">
+          <div class="upload-zone" id="uploadZone">
+            <input id="file" type="file" accept=".log,.txt" />
+            <label for="file" class="upload-btn">SELECT FILE</label>
+            <span id="file-name">NO FILE LOADED</span>
+          </div>
+          <div class="file-history">
+            <div class="history-header">
+              RECENT FILES
+              <button class="history-popup-btn" onclick="openHistoryPopup()" title="전체 히스토리 보기">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="9" y1="9" x2="15" y2="9"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+              </button>
+            </div>
+            <div id="historyList" class="history-list">
+              <div class="history-empty">NO HISTORY</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 검색 제어 패널 -->
+      <div class="console-panel">
+        <div class="panel-header">▣ SEARCH CONTROL</div>
+        <div class="panel-body">
+          <div class="control-group">
+            <label>추천 키워드</label>
+            <div class="keyword-chips">
+              <button class="chip chip-info" onclick="setSearchWord('INFO')">INFO</button>
+              <button class="chip chip-error" onclick="setSearchWord('Exception')">Exception</button>
+              <button class="chip chip-fatal" onclick="setSearchWord('FATAL')">FATAL</button>
+            </div>
+          </div>
+          <div class="control-group">
+            <label>PATTERN</label>
+            <input type="text" id="searchWord" placeholder="INFO, Exception, WARN..." value="INFO">
+          </div>
+          <button class="btn primary" id="btnSearch" onclick="doSearch()">EXECUTE SEARCH</button>
+        </div>
+      </div>
+
+      <!-- 분석 옵션 패널 -->
+      <div class="console-panel">
+        <div class="panel-header">▣ ANALYSIS OPTIONS</div>
+        <div class="panel-body">
+          <button class="btn btn-cyber-neon" id="btnDetail" onclick="openDetailPopup()">종합 분석</button>
+          <button class="btn btn-cyber-neon" id="btnErrorAnal" onclick="openDetailPopup()">오류 분석</button>
+          <button class="btn btn-cyber-neon" id="btnSplit" onclick="doSplit()">FILE SPLIT</button>
+        </div>
+      </div>
+
+      <!-- 로그 뷰어 패널 -->
+      <div class="console-panel log-viewer-half">
+        <div class="panel-header">▣ LOG VIEWER</div>
+        <div class="panel-body">
+          <div id="preview"></div>
+        </div>
+      </div>
+
+      <!-- 실시간 메모리 모니터링 패널 -->
+      <div class="console-panel memory-monitor-half">
+        <div class="panel-header">
+          <span>▣ HEAP MEMORY</span>
+          <span class="memory-status" id="heapStatus">MONITORING</span>
+        </div>
+        <div class="panel-body">
+          <div class="memory-visual">
+            <canvas id="heapCanvas" width="400" height="200"></canvas>
+          </div>
+          <div class="memory-stats">
+            <div class="stat-row">
+              <span class="stat-label">USED:</span>
+              <span class="stat-value" id="heapUsed">0 MB</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">TOTAL:</span>
+              <span class="stat-value" id="heapTotal">0 MB</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">LIMIT:</span>
+              <span class="stat-value" id="heapLimit">0 MB</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">USAGE:</span>
+              <span class="stat-value usage-percent" id="heapPercent">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 종합분석 팝업 -->
+  <div id="detailPopup" class="detail-popup">
+    <div class="detail-popup-content">
+      <div class="detail-popup-header">
+        <h2>◆ LOG STATISTICS ANALYSIS ◆</h2>
+        <button class="detail-close-btn" onclick="closeDetailPopup()">✕ CLOSE</button>
+      </div>
+      
+      <!-- 로딩 애니메이션 -->
+      <div id="analysisLoading" class="analysis-loading">
+        <!-- 자비스 스타일 데이터 스트림 배경 -->
+        <div class="jarvis-data-streams">
+          <div class="data-stream stream-1"></div>
+          <div class="data-stream stream-2"></div>
+          <div class="data-stream stream-3"></div>
+          <div class="data-stream stream-4"></div>
+        </div>
+        
+        <!-- 움직이는 라인들 -->
+        <div class="jarvis-lines">
+          <div class="scan-line line-1"></div>
+          <div class="scan-line line-2"></div>
+          <div class="scan-line line-3"></div>
+        </div>
+        
+        <!-- 추가 회전 링들 -->
+        <div class="jarvis-rings">
+          <div class="ring ring-1"></div>
+          <div class="ring ring-2"></div>
+          <div class="ring ring-3"></div>
+        </div>
+        
+        <div class="loading-spinner"></div>
+        <div class="loading-text">ANALYZING LOG DATA...</div>
+        <div class="loading-progress" id="loadingProgress">0%</div>
+      </div>
+      
+      <div id="detailContent" style="display:none;">
+        <div class="detail-section">
+          <h3>📊 Overall Statistics</h3>
+          <div class="detail-stats-grid">
+            <div class="stat-card">
+              <h4>Total Requests</h4>
+              <div class="stat-value" id="totalRequests">0</div>
+            </div>
+            <div class="stat-card">
+              <h4>Exception Count</h4>
+              <div class="stat-value" id="errorCount" style="color: #ff6666;">0</div>
+            </div>
+            <div class="stat-card">
+              <h4>Analysis Duration</h4>
+              <div class="stat-value" id="analysisDuration" style="font-size: 18px;">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>🏆 TOP 5 UX_ Requests</h3>
+          <div id="topRequests"></div>
+        </div>
+
+        <div class="detail-section">
+          <h3>⚠️ Exceptions</h3>
+          <div id="errorLogs" class="error-list"></div>
+          <div id="errorPagination" class="error-pagination" style="display:none;">
+            <button class="btn-page" onclick="prevErrorPage()">◀ PREV</button>
+            <span class="page-info" id="errorPageInfo">1 / 1</span>
+            <button class="btn-page" onclick="nextErrorPage()">NEXT ▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="js/logWorkerSource.js"></script>
+  <script src="js/plotly-3.1.0.min.js"></script>
+  <script src="js/modal.js"></script>
+  <script src="js/main.js"></script>
+  
+  <script>
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInputEl = document.getElementById('file');
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        const f = files[0];
+        window.logfile = f;
+        document.getElementById('file-name').textContent = f.name;
+        
+        if (typeof chartDragClear === 'function') {
+          chartDragClear();
+        }
+        window.timeRangeSize = 24;
+        
+        // 히스토리에 추가
+        if (typeof addToHistory === 'function') {
+          addToHistory(f);
+        }
+      }
+    });
+
+    fileInputEl.addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (f) {
+        document.getElementById('file-name').textContent = f.name;
+        
+        // 히스토리에 추가
+        if (typeof addToHistory === 'function') {
+          addToHistory(f);
+        }
+      }
+    });
+
+    // 추천 키워드 클릭 시 검색어 자동 입력
+    function setSearchWord(keyword) {
+      document.getElementById('searchWord').value = keyword;
+      document.getElementById('searchWord').focus();
+    }
+
+    // IndexedDB 설정
+    const DB_NAME = 'LogAnalyzerDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'logfiles';
+    const FILE_HISTORY_KEY = 'logfile_history';
+    const MAX_HISTORY = 15;
+    let db = null;
+
+    // IndexedDB 초기화
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          }
+        };
+      });
+    }
+
+    // IndexedDB에 파일 저장
+    async function saveFileToIndexedDB(file) {
+      if (!db) await initDB();
+      
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const id = `${file.name}_${file.size}`;
+        
+        const request = store.put({ id, file, timestamp: Date.now() });
+        request.onsuccess = () => resolve(id);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // IndexedDB에서 파일 불러오기
+    async function loadFileFromIndexedDB(id) {
+      if (!db) await initDB();
+      
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.get(id);
+        
+        request.onsuccess = () => {
+          if (request.result) {
+            resolve(request.result.file);
+          } else {
+            resolve(null);
+          }
+        };
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // IndexedDB에서 파일 삭제
+    async function deleteFileFromIndexedDB(id) {
+      if (!db) await initDB();
+      
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(id);
+        
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // 히스토리 불러오기
+    function loadHistory() {
+      try {
+        const history = localStorage.getItem(FILE_HISTORY_KEY);
+        return history ? JSON.parse(history) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    // 히스토리 저장
+    function saveHistory(history) {
+      try {
+        localStorage.setItem(FILE_HISTORY_KEY, JSON.stringify(history));
+      } catch (e) {
+        console.error('Failed to save history:', e);
+      }
+    }
+
+    // 히스토리에 파일 추가
+    async function addToHistory(file) {
+      let history = loadHistory();
+      
+      // 중복 제거 (같은 파일명과 크기)
+      history = history.filter(item => 
+        !(item.name === file.name && item.size === file.size)
+      );
+      
+      // 새 파일을 맨 앞에 추가
+      history.unshift({
+        name: file.name,
+        size: file.size,
+        timestamp: Date.now()
+      });
+      
+      // 최대 개수 제한
+      history = history.slice(0, MAX_HISTORY);
+      
+      saveHistory(history);
+      
+      // IndexedDB에 파일 저장
+      try {
+        await saveFileToIndexedDB(file);
+      } catch (e) {
+        console.error('Failed to save file to IndexedDB:', e);
+      }
+      
+      updateHistoryUI();
+    }
+
+    // 히스토리에서 삭제
+    function removeFromHistory(index) {
+      let history = loadHistory();
+      history.splice(index, 1);
+      saveHistory(history);
+      updateHistoryUI();
+    }
+
+    // 파일 크기 포맷
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+    }
+
+    // 히스토리 파일 클릭 시 로드
+    async function loadFromHistory(index) {
+      const history = loadHistory();
+      const item = history[index];
+      
+      if (!item) return;
+      
+      // IndexedDB에서 파일 불러오기
+      const fileId = `${item.name}_${item.size}`;
+      const file = await loadFileFromIndexedDB(fileId);
+      
+      if (file) {
+        // 파일 자동 로드
+        window.logfile = file;
+        document.getElementById('file-name').textContent = file.name;
+        
+        if (typeof chartDragClear === 'function') {
+          chartDragClear();
+        }
+        window.timeRangeSize = 24;
+        
+        // 검색 버튼 깜빡임 추가
+        const searchBtn = document.getElementById('btnSearch');
+        if (searchBtn) {
+          searchBtn.classList.add('btn-blink');
+        }
+      } else {
+        // 파일이 IndexedDB에 없음
+        alert(`파일을 찾을 수 없습니다.\n"${item.name}" 파일을 다시 선택해주세요.`);
+        await deleteFileFromIndexedDB(fileId);
+        removeFromHistory(index);
+      }
+    }
+
+    // 히스토리 UI 업데이트 (최신 1개만 표시)
+    function updateHistoryUI() {
+      const history = loadHistory();
+      const historyList = document.getElementById('historyList');
+      
+      if (history.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">NO HISTORY</div>';
+        return;
+      }
+      
+      // 최신 1개만 표시
+      const latestItem = history[0];
+      historyList.innerHTML = `
+        <div class="history-item">
+          <span class="history-item-name" title="${latestItem.name}" onclick="loadFromHistory(0)">${latestItem.name}</span>
+          <span class="history-item-size">${formatFileSize(latestItem.size)}</span>
+          <button class="history-item-delete" onclick="removeFromHistory(0)">×</button>
+        </div>
+      `;
+    }
+
+    // 전역 모달 인스턴스
+    let historyModal = null;
+
+    // 히스토리 팝업 열기
+    function openHistoryPopup() {
+      const history = loadHistory();
+      
+      if (history.length === 0) {
+        alert('저장된 파일 히스토리가 없습니다.');
+        return;
+      }
+      
+      const popupContent = `
+        <div class="history-popup-header">
+          <h3>파일 히스토리 (${history.length}개)</h3>
+          <button class="popup-close-btn" onclick="closeHistoryPopup()">×</button>
+        </div>
+        <div class="history-popup-list">
+          ${history.map((item, index) => `
+            <div class="history-popup-item">
+              <div class="popup-item-info" onclick="loadFromHistoryPopup(${index})">
+                <span class="popup-item-name" title="${item.name}">${item.name}</span>
+                <span class="popup-item-size">${formatFileSize(item.size)}</span>
+              </div>
+              <button class="popup-item-delete" onclick="removeFromHistoryPopup(${index})">삭제</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      
+      // Modal 인스턴스 생성
+      historyModal = new Modal({
+        size: 'md',
+        title: '',
+        closeOnEsc: true,
+        closeOnOverlay: true
+      });
+      
+      historyModal.setContent(popupContent);
+      historyModal.open();
+    }
+
+    // 팝업 닫기
+    function closeHistoryPopup() {
+      if (historyModal) {
+        historyModal.close();
+        historyModal = null;
+      }
+    }
+
+    // 팝업에서 파일 로드
+    async function loadFromHistoryPopup(index) {
+      const history = loadHistory();
+      const item = history[index];
+      
+      if (!item) return;
+      
+      // IndexedDB에서 파일 불러오기
+      const fileId = `${item.name}_${item.size}`;
+      const file = await loadFileFromIndexedDB(fileId);
+      
+      if (file) {
+        // 파일 자동 로드
+        window.logfile = file;
+        document.getElementById('file-name').textContent = file.name;
+        
+        if (typeof chartDragClear === 'function') {
+          chartDragClear();
+        }
+        window.timeRangeSize = 24;
+        
+        // 검색 버튼 깜빡임 추가
+        const searchBtn = document.getElementById('btnSearch');
+        if (searchBtn) {
+          searchBtn.classList.add('btn-blink');
+        }
+        
+        // 팝업 닫기
+        closeHistoryPopup();
+      } else {
+        // 파일이 IndexedDB에 없음
+        alert(`파일을 찾을 수 없습니다.\n"${item.name}" 파일을 다시 선택해주세요.`);
+        await removeFromHistoryPopup(index);
+      }
+    }
+
+    // 팝업에서 파일 삭제
+    async function removeFromHistoryPopup(index) {
+      const history = loadHistory();
+      const item = history[index];
+      
+      if (item) {
+        const fileId = `${item.name}_${item.size}`;
+        await deleteFileFromIndexedDB(fileId);
+      }
+      
+      removeFromHistory(index);
+      
+      // 팝업 내용 갱신
+      const newHistory = loadHistory();
+      if (newHistory.length === 0) {
+        closeHistoryPopup();
+        return;
+      }
+      
+      // 팝업 다시 열기 (갱신)
+      closeHistoryPopup();
+      setTimeout(() => openHistoryPopup(), 100);
+    }
+
+    // 페이지 로드 시 IndexedDB 초기화
+    (async function() {
+      await initDB();
+      updateHistoryUI();
+    })();
+
+    // 초기 히스토리 로드
+    updateHistoryUI();
+
+    // 로그 분석 데이터 저장
+    let logAnalysisData = {
+      totalRequests: 0,
+      uxRequests: {},
+      errors: [],
+      totalErrorCount: 0,
+      timeStart: null,
+      timeEnd: null
+    };
+
+    // 에러 페이지네이션
+    let currentErrorPage = 1;
+    const ERRORS_PER_PAGE = 20;
+
+    // 종합분석 팝업 열기
+    async function openDetailPopup() {
+      if (!window.logfile) {
+        alert("로그 파일을 업로드 후 'EXECUTE SEARCH' 버튼을 누르세요 !!");
+        return;
+      }
+      
+      // 검색 완료 여부 확인
+      if (!window.searchObj || !window.searchObj.searchLineStartByteArray) {
+        alert("로그 파일을 업로드 후 'EXECUTE SEARCH' 버튼을 누르세요 !!");
+        return;
+      }
+
+      const popup = document.getElementById('detailPopup');
+      popup.classList.add('active');
+      
+      // 로딩 표시, 결과 숨김
+      document.getElementById('analysisLoading').style.display = 'flex';
+      document.getElementById('detailContent').style.display = 'none';
+      document.getElementById('loadingProgress').textContent = '0%';
+      
+      // 로그 분석 시작
+      await analyzeLogFile();
+      
+      // 로딩 숨김, 결과 표시
+      document.getElementById('analysisLoading').style.display = 'none';
+      document.getElementById('detailContent').style.display = 'block';
+      
+      // 결과 표시
+      currentErrorPage = 1;
+      displayAnalysisResults();
+    }
+
+    // 종합분석 팝업 닫기
+    function closeDetailPopup() {
+      const popup = document.getElementById('detailPopup');
+      popup.classList.remove('active');
+    }
+
+    // 로그 파일 분석 (청크 방식 - 대용량 파일 지원)
+    async function analyzeLogFile() {
+      const file = window.logfile;
+      if (!file) return;
+
+      // 분석 데이터 초기화
+      logAnalysisData = {
+        totalRequests: 0,
+        uxRequests: {},
+        errors: [],
+        totalErrorCount: 0,
+        timeStart: null,
+        timeEnd: null
+      };
+
+      const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB씩 읽기
+      let offset = 0;
+      let lineNumber = 0;
+      let leftover = '';
+
+      // 진행상황 표시
+      const loadingProgress = document.getElementById('loadingProgress');
+      
+      while (offset < file.size) {
+        const chunkEnd = Math.min(offset + CHUNK_SIZE, file.size);
+        const chunk = file.slice(offset, chunkEnd);
+        const text = await chunk.text();
+        const combined = leftover + text;
+        
+        const lines = combined.split('\n');
+        
+        // 마지막 라인은 다음 청크로 이월 (불완전할 수 있음)
+        if (chunkEnd < file.size) {
+          leftover = lines.pop() || '';
+        } else {
+          leftover = '';
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          lineNumber++;
+
+          // _BIZREQUEST 추출
+          if (line.includes('_BIZREQUEST')) {
+            logAnalysisData.totalRequests++;
+            
+            // UX_ 요청 추출
+            const uxMatch = line.match(/_BIZREQUEST[:\s]+([A-Z_0-9]+)/);
+            if (uxMatch && uxMatch[1].startsWith('UX_')) {
+              const reqName = uxMatch[1];
+              logAnalysisData.uxRequests[reqName] = (logAnalysisData.uxRequests[reqName] || 0) + 1;
+            }
+          }
+
+          // Exception 추출 (Exception, Error:) - 멀티라인 지원
+          if (line.includes('Exception') || line.includes('Error:')) {
+            logAnalysisData.totalErrorCount++;
+            
+            // 상세 내용은 최대 1000개만 저장 (페이지네이션용)
+            if (logAnalysisData.errors.length < 1000) {
+              // 타임스탬프 추출
+              const timeMatch = line.match(/(\d{2}:\d{2}:\d{2})/);
+              const timestamp = timeMatch ? timeMatch[1] : '';
+              
+              // Exception 타입
+              let errorType = 'Exception';
+              
+              // Exception 본문 + 스택 트레이스 수집
+              let fullErrorContent = line.trim();
+              let additionalLines = 0;
+              for (let j = i + 1; j < Math.min(i + 50, lines.length); j++) {
+                const nextLine = lines[j].trim();
+                // 스택 트레이스 라인인지 확인
+                if (nextLine.startsWith('at ') || 
+                    nextLine.startsWith('Caused by:') || 
+                    nextLine.startsWith('Suppressed:') || 
+                    nextLine.startsWith('...')) {
+                  fullErrorContent += '\n' + nextLine;
+                  additionalLines++;
+                } else if (!nextLine || 
+                          /^\d{2}:\d{2}:\d{2}/.test(nextLine) || 
+                          /^(?:[A-Z]+\s+)?\[?\d{4}[-\/]\d{2}[-\/]\d{2}[\sT]\d{2}:\d{2}:\d{2}/.test(nextLine)) {
+                  break;
+                } else {
+                  break;
+                }
+              }
+              
+              logAnalysisData.errors.push({
+                line: lineNumber,
+                timestamp: timestamp,
+                errorType: errorType,
+                content: fullErrorContent,
+                lines: additionalLines + 1
+              });
+              
+              i += additionalLines;
+              lineNumber += additionalLines;
+            }
+          }
+
+          // 시간 범위 추출
+          const timeMatch = line.match(/(\d{2}:\d{2}:\d{2})/);
+          if (timeMatch) {
+            if (!logAnalysisData.timeStart) {
+              logAnalysisData.timeStart = timeMatch[1];
+            }
+            logAnalysisData.timeEnd = timeMatch[1];
+          }
+        }
+
+        offset = chunkEnd;
+        
+        const percent = Math.min(Math.floor((offset / file.size) * 100), 100);
+        if (loadingProgress) {
+          loadingProgress.textContent = `${percent}%`;
+        }
+      }
+    }
+
+    // 분석 결과 표시
+    function displayAnalysisResults() {
+      document.getElementById('totalRequests').textContent = logAnalysisData.totalRequests.toLocaleString();
+      document.getElementById('errorCount').textContent = logAnalysisData.totalErrorCount.toLocaleString();
+      
+      if (logAnalysisData.timeStart && logAnalysisData.timeEnd) {
+        document.getElementById('analysisDuration').textContent = 
+          `${logAnalysisData.timeStart} ~ ${logAnalysisData.timeEnd}`;
+      }
+
+      // TOP 5 UX_ 요청
+      const topRequests = Object.entries(logAnalysisData.uxRequests)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      
+      const topRequestsHTML = topRequests.map((item, index) => `
+        <div class="stat-card">
+          <h4>${index + 1}. ${item[0]}</h4>
+          <div class="stat-value" style="font-size: 20px;">${item[1].toLocaleString()} 회</div>
+        </div>
+      `).join('');
+      
+      document.getElementById('topRequests').innerHTML = `
+        <div class="detail-stats-grid">${topRequestsHTML || '<p style="color: #888;">UX_ 요청이 없습니다.</p>'}</div>
+      `;
+
+      displayErrorPage();
+    }
+
+    // 에러 페이지 표시
+    function displayErrorPage() {
+      const totalPages = Math.ceil(logAnalysisData.errors.length / ERRORS_PER_PAGE);
+      const startIdx = (currentErrorPage - 1) * ERRORS_PER_PAGE;
+      const endIdx = Math.min(startIdx + ERRORS_PER_PAGE, logAnalysisData.errors.length);
+      
+      const errorHTML = logAnalysisData.errors.slice(startIdx, endIdx).map(err => {
+        const errorColor = '#ff9900';
+        return `
+          <div class="error-item">
+            <div class="error-header">
+              <span class="error-type" style="color: ${errorColor};">◆ ${err.errorType}</span>
+              <span class="error-line">Line ${err.line}</span>
+              ${err.timestamp ? `<span class="error-time">⏱ ${err.timestamp}</span>` : ''}
+            </div>
+            <div class="error-content">${err.content}</div>
+          </div>
+        `;
+      }).join('');
+      
+      const errorWarning = logAnalysisData.totalErrorCount > logAnalysisData.errors.length
+        ? `<p style="color: #ff6b9d; margin-top: 10px;">⚠️ 총 ${logAnalysisData.totalErrorCount.toLocaleString()}개 Exception 중 ${logAnalysisData.errors.length.toLocaleString()}개까지 저장되었습니다.</p>` 
+        : '';
+      
+      document.getElementById('errorLogs').innerHTML = (errorHTML || 
+        '<p style="color: #888;">Exception이 발견되지 않았습니다.</p>') + errorWarning;
+      
+      const pagination = document.getElementById('errorPagination');
+      if (logAnalysisData.errors.length > ERRORS_PER_PAGE) {
+        pagination.style.display = 'flex';
+        document.getElementById('errorPageInfo').textContent = `${currentErrorPage} / ${totalPages}`;
+        
+        const prevBtn = pagination.querySelector('button:first-child');
+        const nextBtn = pagination.querySelector('button:last-child');
+        
+        prevBtn.disabled = currentErrorPage === 1;
+        nextBtn.disabled = currentErrorPage === totalPages;
+      } else {
+        pagination.style.display = 'none';
+      }
+    }
+
+    // 이전 페이지
+    function prevErrorPage() {
+      if (currentErrorPage > 1) {
+        currentErrorPage--;
+        displayErrorPage();
+      }
+    }
+
+    // 다음 페이지
+    function nextErrorPage() {
+      const totalPages = Math.ceil(logAnalysisData.errors.length / ERRORS_PER_PAGE);
+      if (currentErrorPage < totalPages) {
+        currentErrorPage++;
+        displayErrorPage();
+      }
+    }
+
+    // 로그 분석 완료 시 종합분석 버튼 표시
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.cmd === 'complete') {
+        const detailBtn = document.getElementById('btnDetail');
+        if (detailBtn) {
+          detailBtn.style.display = 'block';
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -218,7 +218,7 @@ var workerSource = `
         loaded: loaded,
         lineIndex: lineIndex,
         searchLineSize:searchLineIndex,
-        preview: textBuffer.length > 100 ? textBuffer.slice(-100) : textBuffer,    // 미리보기: 마지막 100자 (2배 확장)
+        preview: textBuffer.length > 200 ? textBuffer.slice(-100) : textBuffer, 
         // done 용
         searchLineArray: kind == "done" ? searchLineArray : null,
         timeStart: kind == "done" ? timeStart : 0,

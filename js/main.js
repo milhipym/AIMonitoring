@@ -990,7 +990,7 @@ function showDetailInfo(logIndex, allLogs, preViewText) {
     detailContainer = document.createElement('div');
     detailModal.setContent(detailContainer);
     
-    // AI 분석 버튼
+    // AI 분석 버튼 - 바로 실행 (디폴트: qwen, 4096)
     detailModal.setHeader([
       {
         label: 'AI 분석', 
@@ -998,7 +998,7 @@ function showDetailInfo(logIndex, allLogs, preViewText) {
         onClick: m => {
           const logContent = detailContainer.querySelector('#logContent');
           if (logContent) {
-            showAIAnalysisModal(logContent.textContent);
+            doDetailAIAnalyze(logContent.textContent, 'qwen', 4096);
           }
         }
       }
@@ -1074,7 +1074,7 @@ function updateDetailContent() {
         const highlightedEl = document.getElementById(formattedLogText.highlightId);
         if (highlightedEl) {
           highlightedEl.scrollIntoView({
-            behavior: 'smooth',
+            behavior: 'instant',
             block: 'center'
           });
         }
@@ -1303,60 +1303,7 @@ function extractTimestamp(line) {
   return null;
 }
 
-// 3단계: AI 분석 모달
-function showAIAnalysisModal(logText) {
-  const content = `
-    <div class="ai-settings" style="margin-bottom: 20px;">
-      <div class="ai-setting-group" style="margin-bottom: 15px;">
-        <label for="aiModel" style="display: block; margin-bottom: 8px; color: #00d9ff;">AI MODEL</label>
-        <select id="aiModel" class="ai-select" style="width: 100%; padding: 8px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; color: #c9d1d9;">
-          <option value="llama" selected>라마70B</option>
-          <option value="llama8b">라마8b</option>
-          <option value="qwen">큐원코드</option>
-        </select>
-      </div>
-      <div class="ai-setting-group">
-        <label for="aiLength" style="display: block; margin-bottom: 8px; color: #00d9ff;">응답길이</label>
-        <input type="number" id="aiLength" class="ai-input" min="256" max="8192" value="4096" style="width: 100%; padding: 8px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; color: #c9d1d9;">
-      </div>
-    </div>
-  `;
-  
-  const modal = new Modal({
-    title: 'AI 분석 설정',
-    size: 'md',
-    closeOnEsc: true,
-    closeOnOverlay: true
-  });
-
-  const container = document.createElement('div');
-  container.innerHTML = content;
-  modal.setContent(container);
-
-  modal.setFooter([
-    {
-      label: '분석 실행', 
-      variant: 'primary', 
-      onClick: m => {
-        const aiModel = container.querySelector('#aiModel').value;
-        const aiLength = parseInt(container.querySelector('#aiLength').value);
-        m.close();
-        doDetailAIAnalyze(logText, aiModel, aiLength);
-        //callLlmApi(logText, aiModel, aiLength);
-        console.log("logText :: " + logText + ",aiModel:: " + aiModel + " ,aiLength:: " +aiLength);
-      }
-    },
-    {
-      label: '취소', 
-      variant: 'ghost', 
-      onClick: m => {
-        m.close();
-      }
-    }
-  ]);
-  
-  modal.open();
-}
+// 3단계: AI 분석 설정 모달 제거됨 (바로 실행 방식으로 변경)
 
 // AI 분석용 프롬프트 생성 함수
 function generateAnalysisPrompt(logText) {
@@ -1492,7 +1439,7 @@ async function doDetailAIAnalyze(logText, aiModel, aiLength) {
     console.log("Response Data:", result);
     loadingModal.close();
 
-    // 결과 모달
+    // 결과 모달 - 모델 선택 버튼 추가
     const resultModal = new Modal({
       title: 'AI 분석 결과',
       size: 'lg',
@@ -1509,11 +1456,27 @@ async function doDetailAIAnalyze(logText, aiModel, aiLength) {
 
     const resultContainer = document.createElement('div');
     resultContainer.innerHTML = `
+      <div style="margin-bottom: 15px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+        <span style="color: #00d9ff; margin-right: 10px;">다른 모델로 재분석:</span>
+        <button class="btn-model" data-model="llama8b" style="padding: 8px 16px; background: #58a6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;">라마8B</button>
+        <button class="btn-model" data-model="llama" style="padding: 8px 16px; background: #58a6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;">라마70B</button>
+        <button class="btn-model" data-model="qwen" style="padding: 8px 16px; background: #58a6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;">큐원코드</button>
+      </div>
       <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 20px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; color: #c9d1d9;">
         ${resultContent}
       </div>
     `;
     resultModal.setContent(resultContainer);
+    
+    // 모델 선택 버튼 이벤트 리스너 추가
+    const modelButtons = resultContainer.querySelectorAll('.btn-model');
+    modelButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const selectedModel = btn.getAttribute('data-model');
+        resultModal.close();
+        doDetailAIAnalyze(logText, selectedModel, aiLength);
+      });
+    });
 
     resultModal.setFooter([
       {

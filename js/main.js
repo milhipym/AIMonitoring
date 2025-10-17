@@ -1074,7 +1074,7 @@ function updateDetailContent() {
         const highlightedEl = document.getElementById(formattedLogText.highlightId);
         if (highlightedEl) {
           highlightedEl.scrollIntoView({
-            behavior: 'smooth',
+            behavior: 'instant',
             block: 'center'
           });
         }

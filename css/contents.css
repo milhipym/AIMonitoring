@@ -177,14 +177,22 @@
     overflow: hidden;
     box-shadow: 0 0 20px rgba(0, 217, 255, 0.1);
     transition: all 0.3s ease;
-    height: 400px;
-    min-height: 400px;
-    max-height: 400px;
     display: flex;
     flex-direction: column;
 }
 
 .console-panel .panel-body {
+    padding: 16px;
+}
+
+/* LOG VIEWER만 고정 높이 적용 */
+.console-panel.log-viewer-half {
+    height: 400px;
+    min-height: 400px;
+    max-height: 400px;
+}
+
+.console-panel.log-viewer-half .panel-body {
     flex: 1;
     overflow: hidden;
     display: flex;
@@ -209,18 +217,48 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
-.panel-body {
+/* 일반 패널의 바디 패딩 */
+.console-panel:not(.log-viewer-half) .panel-body {
+    padding: 12px 16px;
+}
+
+/* LOG VIEWER 패널의 바디 패딩 (기존 유지) */
+.console-panel.log-viewer-half .panel-body {
     padding: 16px;
 }
 
-/* ANALYSIS OPTIONS 패널 특별 스타일 */
-.console-panel .panel-body .btn {
-    margin-bottom: 12px;
+/* 개별 패널 최적화 스타일 */
+
+/* FILE LOADER, SEARCH CONTROL, ANALYSIS OPTIONS 패널은 컨텐츠에 맞게 조정 */
+.console-panel:not(.log-viewer-half) {
+    height: auto;
+    min-height: fit-content;
 }
 
-.console-panel .panel-body .btn:last-child {
+/* ANALYSIS OPTIONS 패널 버튼 스타일 */
+.console-panel .panel-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.console-panel:not(.log-viewer-half) .panel-body .btn {
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.console-panel:not(.log-viewer-half) .panel-body .btn:last-child {
+    margin-bottom: 0;
+}
+
+/* 컨트롤 그룹 간격 조정 */
+.console-panel:not(.log-viewer-half) .control-group {
+    margin-bottom: 16px;
+}
+
+.console-panel:not(.log-viewer-half) .control-group:last-child {
     margin-bottom: 0;
 }
 
@@ -281,8 +319,8 @@
 
 /* 파일 히스토리 */
 .file-history {
-    margin-top: 24px;
-    padding: 16px;
+    margin-top: 20px;
+    padding: 12px;
     background: linear-gradient(135deg, rgba(0, 217, 255, 0.06), rgba(138, 43, 226, 0.06));
     border: 2px solid var(--border-primary);
     border-radius: 8px;

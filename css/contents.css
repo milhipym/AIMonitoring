@@ -166,11 +166,7 @@
     }
     
     .console-panel.log-viewer-half {
-        grid-column: span 4;
-    }
-    
-    .console-panel.memory-monitor-half {
-        grid-column: span 2;
+        grid-column: span 6;
     }
 }
 
@@ -181,6 +177,18 @@
     overflow: hidden;
     box-shadow: 0 0 20px rgba(0, 217, 255, 0.1);
     transition: all 0.3s ease;
+    height: 400px;
+    min-height: 400px;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.console-panel .panel-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .console-panel:hover {
@@ -205,6 +213,15 @@
 
 .panel-body {
     padding: 16px;
+}
+
+/* ANALYSIS OPTIONS 패널 특별 스타일 */
+.console-panel .panel-body .btn {
+    margin-bottom: 12px;
+}
+
+.console-panel .panel-body .btn:last-child {
+    margin-bottom: 0;
 }
 
 /* 파일 업로드 존 */
@@ -646,13 +663,14 @@ input[type="text"]::placeholder {
     border-radius: 6px;
     border: 2px solid var(--accent-cyan);
     height: 320px;
+    min-height: 320px;
+    max-height: 320px;
     overflow-y: auto;
     overflow-x: auto;
     box-shadow: 0 0 20px rgba(0, 217, 255, 0.3), inset 0 0 30px rgba(0, 255, 0, 0.05);
     display: flex;
     flex-direction: column;
     line-height: 1.5;
-    height: 100%
 }
 
 #preview::-webkit-scrollbar {
@@ -1498,155 +1516,290 @@ input[type="text"]::placeholder {
     box-shadow: 0 0 10px var(--glow-cyan);
 }
 
-/* ==================== 실시간 메모리 모니터링 패널 ==================== */
+/* 메모리 모니터링 기능 제거됨 */
 
-.console-panel.full-width {
-    grid-column: 1 / -1;
-    width: 100%;
-}
+/* ==================== 로그 컨텐츠 포맷팅 (cat 스타일) ==================== */
 
-.memory-monitor-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    padding: 10px;
-}
-
-.memory-panel {
-    background: rgba(0, 0, 0, 0.5);
-    border: 2px solid var(--border-primary);
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 0 20px rgba(0, 217, 255, 0.15);
-    transition: all 0.3s ease;
-}
-
-.memory-panel:hover {
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
-    transform: translateY(-2px);
-}
-
-
-.memory-status {
-    color: var(--accent-purple);
-    font-size: 11px;
-    padding: 4px 12px;
-    background: rgba(138, 43, 226, 0.2);
-    border: 1px solid var(--accent-purple);
-    border-radius: 12px;
-    letter-spacing: 1px;
-    animation: pulse 2s ease-in-out infinite;
-}
-
-.memory-visual {
-    position: relative;
-    margin-bottom: 16px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid var(--border-secondary);
+.log-content-formatted {
+    background: #0d1117;
+    border: 1px solid #30363d;
     border-radius: 6px;
-    padding: 10px;
-    min-height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.memory-visual canvas {
-    display: block;
-    max-width: 100%;
-    height: auto;
-    filter: drop-shadow(0 0 10px rgba(0, 217, 255, 0.5));
-}
-
-.memory-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
-
-.stat-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: rgba(0, 217, 255, 0.05);
-    border: 1px solid var(--border-secondary);
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.stat-row:hover {
-    background: rgba(0, 217, 255, 0.1);
-    border-color: var(--accent-cyan);
-}
-
-.stat-label {
-    color: var(--text-secondary);
-    font-size: 11px;
-    letter-spacing: 1px;
-    font-weight: 600;
-}
-
-.stat-value {
-    color: var(--accent-cyan);
+    padding: 15px;
+    max-height: 500px;
+    overflow-y: auto;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
     font-size: 13px;
-    font-weight: 700;
-    text-shadow: 0 0 8px var(--glow-cyan);
-    font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+    line-height: 1.4;
+    color: #c9d1d9;
+    white-space: pre;
+    overflow-x: auto;
 }
 
-.stat-value.usage-percent {
-    color: var(--accent-purple);
-    text-shadow: 0 0 8px rgba(138, 43, 226, 0.8);
+.log-content-formatted::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-/* 사용률에 따른 색상 변화 */
-.stat-value.usage-percent.warning {
-    color: #ffaa00;
-    text-shadow: 0 0 8px rgba(255, 170, 0, 0.8);
+.log-content-formatted::-webkit-scrollbar-track {
+    background: #161b22;
+    border-radius: 4px;
 }
 
-.stat-value.usage-percent.danger {
-    color: #ff4444;
-    text-shadow: 0 0 8px rgba(255, 68, 68, 0.8);
+.log-content-formatted::-webkit-scrollbar-thumb {
+    background: #58a6ff;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(88, 166, 255, 0.5);
 }
 
-/* Jarvis 스타일 스캔 라인 효과 */
-@keyframes memory-scan {
-    0% {
-        top: 0;
-        opacity: 0;
+.log-content-formatted::-webkit-scrollbar-thumb:hover {
+    background: #79c0ff;
+}
+
+/* 로그 라인 기본 스타일 */
+.log-line {
+    display: flex;
+    padding: 1px 0;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    min-height: 18px;
+    align-items: flex-start;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.log-line:hover {
+    background: rgba(88, 166, 255, 0.08);
+    border-left-color: rgba(88, 166, 255, 0.3);
+}
+
+/* 빈 줄 */
+.log-line.empty-line {
+    height: 18px;
+    opacity: 0.3;
+}
+
+/* 하이라이트된 로그 라인 (사용자가 선택한 로그) */
+.log-line.highlighted {
+    background: rgba(255, 235, 59, 0.1);
+    border-left-color: #ffeb3b;
+    box-shadow: 0 0 8px rgba(255, 235, 59, 0.3);
+}
+
+/* 현재 선택된 로그 라인 (상세보기에서 선택된 주요 로그) */
+.log-line.current-selected-log {
+    background: rgba(0, 255, 255, 0.15) !important;
+    border-left: 4px solid #00ffff !important;
+    border-right: 4px solid #00ffff !important;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.5) !important;
+    margin: 2px 0;
+    border-radius: 4px;
+    animation: current-log-pulse 3s ease-in-out infinite;
+}
+
+@keyframes current-log-pulse {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        background: rgba(0, 255, 255, 0.15);
     }
     50% {
+        box-shadow: 0 0 25px rgba(0, 255, 255, 0.8);
+        background: rgba(0, 255, 255, 0.25);
+    }
+}
+
+/* 스택 트레이스 라인 */
+.log-line.stack-trace {
+    background: rgba(255, 100, 100, 0.05);
+    border-left-color: rgba(255, 100, 100, 0.3);
+    color: #ffa8a8;
+    padding-left: 20px;
+}
+
+/* 로그 레벨별 색상 */
+.log-line.fatal {
+    background: rgba(139, 0, 0, 0.1);
+    border-left-color: #8b0000;
+}
+
+.log-line.error {
+    background: rgba(255, 99, 132, 0.08);
+    border-left-color: rgba(255, 99, 132, 0.5);
+}
+
+.log-line.warn {
+    background: rgba(255, 206, 84, 0.08);
+    border-left-color: rgba(255, 206, 84, 0.5);
+}
+
+.log-line.info {
+    background: rgba(54, 162, 235, 0.08);
+    border-left-color: rgba(54, 162, 235, 0.5);
+}
+
+.log-line.debug {
+    background: rgba(75, 192, 192, 0.08);
+    border-left-color: rgba(75, 192, 192, 0.5);
+}
+
+.log-line.trace {
+    background: rgba(153, 102, 255, 0.08);
+    border-left-color: rgba(153, 102, 255, 0.5);
+}
+
+.log-line.exception {
+    background: rgba(255, 0, 0, 0.1);
+    border-left-color: #ff0000;
+    animation: pulse-error 2s ease-in-out infinite;
+}
+
+@keyframes pulse-error {
+    0%, 100% {
+        box-shadow: none;
+    }
+    50% {
+        box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+    }
+}
+
+/* 라인 번호 */
+.line-number {
+    display: inline-block;
+    width: 50px;
+    color: #7d8590;
+    font-size: 11px;
+    text-align: right;
+    margin-right: 12px;
+    padding-right: 8px;
+    border-right: 1px solid #30363d;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    flex-shrink: 0;
+    user-select: none;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* 로그 내용 */
+.log-content {
+    flex: 1;
+    padding-left: 8px;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+/* 타임스탬프 하이라이트 */
+.log-timestamp {
+    color: #79c0ff;
+    font-weight: 600;
+    background: rgba(121, 192, 255, 0.1);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: 'SF Mono', monospace;
+}
+
+/* 로그 레벨 하이라이트 */
+.log-level {
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.log-level.fatal {
+    background: #8b0000;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(139, 0, 0, 0.6);
+}
+
+.log-level.error {
+    background: #ff6363;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(255, 99, 99, 0.6);
+}
+
+.log-level.warn {
+    background: #ffce54;
+    color: #000000;
+    box-shadow: 0 0 8px rgba(255, 206, 84, 0.6);
+}
+
+.log-level.info {
+    background: #36a2eb;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(54, 162, 235, 0.6);
+}
+
+.log-level.debug {
+    background: #4bc0c0;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(75, 192, 192, 0.6);
+}
+
+.log-level.trace {
+    background: #9966ff;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(153, 102, 255, 0.6);
+}
+
+.log-level.exception {
+    background: #ff0000;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+    animation: blink-error 1.5s ease-in-out infinite;
+}
+
+@keyframes blink-error {
+    0%, 100% {
         opacity: 1;
     }
-    100% {
-        top: 100%;
-        opacity: 0;
+    50% {
+        opacity: 0.7;
     }
 }
 
-.memory-visual::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
-    box-shadow: 0 0 10px var(--glow-cyan);
-    animation: memory-scan 3s ease-in-out infinite;
+/* 타겟 텍스트 하이라이트 (사용자가 검색한 텍스트) */
+.log-highlight-target {
+    background-color: #ffeb3b !important;
+    color: #d32f2f !important;
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 3px;
+    box-shadow: 0 0 8px rgba(255, 235, 59, 0.6);
+    animation: highlight-pulse 2s ease-in-out infinite;
 }
 
-/* 반응형 처리 */
-@media (max-width: 1200px) {
-    .memory-monitor-container {
-        grid-template-columns: 1fr;
+@keyframes highlight-pulse {
+    0%, 100% {
+        box-shadow: 0 0 8px rgba(255, 235, 59, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(255, 235, 59, 0.9);
     }
 }
 
+/* 특수 패턴 하이라이트 */
+.log-content {
+    /* IP 주소 */
+    --ip-pattern: /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g;
+    /* URL */
+    --url-pattern: /https?:\/\/[^\s]+/g;
+    /* 이메일 */
+    --email-pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+}
+
+/* 반응형 디자인 */
 @media (max-width: 768px) {
-    .memory-stats {
-        grid-template-columns: 1fr;
+    .log-content-formatted {
+        font-size: 11px;
+        padding: 10px;
+    }
+    
+    .line-number {
+        width: 35px;
+        font-size: 10px;
+        margin-right: 8px;
+    }
+    
+    .log-content {
+        padding-left: 6px;
     }
 }

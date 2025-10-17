@@ -85,9 +85,6 @@ document.addEventListener("DOMContentLoaded", function () {
   
   // 로그 뷰어 초기화
   addLogLine("SYSTEM INITIALIZED");
-  
-  // 메모리 모니터링 초기화 (500ms 후)
-  setTimeout(initMemoryMonitoring, 500);
 });
 
 // 해커 스타일 로그 라인 관리
@@ -779,10 +776,9 @@ function showSearchList(ev) {
           card.className = 'card';
           card.style.position = 'relative';
           
-          // 줄바꿈으로 분리
+          // 줄바꿈으로 분리 - 미리보기는 처음 3줄만 표시
           const lines = log.text.split('\n');
-          const isMultiline = lines.length > 3;
-          const previewText = isMultiline ? lines.slice(0, 3).join('\n') : log.text;
+          const previewText = lines.length > 3 ? lines.slice(0, 3).join('\n') + '\n...' : log.text;
           
           card.innerHTML = `
             <div class="cardinfo">
@@ -791,11 +787,6 @@ function showSearchList(ev) {
               </div>
               <div class="row1" style="padding-right: 100px;">
                 <div class="log-preview" style="font-family: monospace; font-size: 13px; color: #c9d1d9; white-space: pre-wrap; word-break: break-all;">${escapeHtml(previewText)}</div>
-                ${isMultiline ? `
-                  <div class="log-full" style="display: none; font-family: monospace; font-size: 13px; color: #c9d1d9; white-space: pre-wrap; word-break: break-all;">${escapeHtml(log.text)}</div>
-                  <button class="btn-expand" style="margin-top: 10px; padding: 5px 15px; background: #238636; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">▼ 전체보기</button>
-                  <button class="btn-collapse" style="display: none; margin-top: 10px; padding: 5px 15px; background: #238636; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">▲ 접기</button>
-                ` : ''}
               </div>
             </div>
           `;
@@ -807,30 +798,6 @@ function showSearchList(ev) {
             currentModal.close({ destroy: false });
             showDetailInfo(idx, logs, previewText);
           });
-          
-          // 전체보기/접기 버튼 이벤트
-          if (isMultiline) {
-            const btnExpand = card.querySelector('.btn-expand');
-            const btnCollapse = card.querySelector('.btn-collapse');
-            const logPreview = card.querySelector('.log-preview');
-            const logFull = card.querySelector('.log-full');
-            
-            btnExpand.addEventListener('click', (e) => {
-              e.stopPropagation();
-              logPreview.style.display = 'none';
-              logFull.style.display = 'block';
-              btnExpand.style.display = 'none';
-              btnCollapse.style.display = 'inline-block';
-            });
-            
-            btnCollapse.addEventListener('click', (e) => {
-              e.stopPropagation();
-              logPreview.style.display = 'block';
-              logFull.style.display = 'none';
-              btnExpand.style.display = 'inline-block';
-              btnCollapse.style.display = 'none';
-            });
-          }
           
           logRowList.appendChild(card);
         });
@@ -1065,7 +1032,11 @@ function updateDetailContent() {
   const currentLog = allLogs[logIndex];
   const startByte = Math.max(0, currentLog.startByte - 10240); // 앞 10KB
   const endByte = Math.min(logfile.size, currentLog.endByte + 10240); // 뒤 10KB
-  const prieviwText = currentPreviewText;
+  
+  // 현재 로그의 미리보기 텍스트를 동적으로 생성 (이전/다음 버튼에 맞게 업데이트)
+  const lines = currentLog.text.split('\n');
+  const isMultiline = lines.length > 3;
+  const prieviwText = isMultiline ? lines.slice(0, 3).join('\n') : currentLog.text;
   
   // readLogSegment 함수를 사용하여 로그 주변 텍스트를 비동기적으로 읽어옵니다.
   readLogSegment(startByte, endByte).then(surroundingText => {
@@ -1075,16 +1046,11 @@ function updateDetailContent() {
     const escapedPreviewText = escapeRegex(prieviwText);
     const regex = new RegExp(escapedPreviewText, 'g');
     
-    // 2. 하이라이트된 부분에 ID를 부여하고, 그 부분을 저장합니다.
-    let firstMatchId = null;
-    let highlightedText = escapeHtml(surroundingText).replace(regex, (match) => {
-        const id = `highlight-1`; // 첫 번째 매치된 부분에만 고정 ID 부여
-        if (firstMatchId === null) {
-            firstMatchId = id;
-            return `<span id="${id}" style="background-color: #ffffff; color: #9b0000; font-weight: bold; padding: 2px 4px;">${match}</span>`;
-        }
-        return `<span style="background-color: #ffffff; color: #9b0000; font-weight: bold; padding: 2px 4px;">${match}</span>`;
-    });
+    // 2. 현재 로그의 실제 텍스트와 위치 찾기
+    const currentLogText = currentLog.text;
+    
+    // 3. 로그 내용을 실제 로그처럼 포맷팅 (현재 로그 강조)
+    const formattedLogText = formatLogContentWithHighlight(surroundingText, prieviwText, currentLogText);
     
     // 3. 로그 내용과 UI를 결합
     const content = `
@@ -1095,17 +1061,17 @@ function updateDetailContent() {
         </div>
         <button id="btnNext" class="btn secondary" style="padding: 5px;" ${logIndex === allLogs.length - 1 ? 'disabled' : ''}>다음 ▶</button>
       </div>
-      <div id="logContent" style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 15px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #c9d1d9; white-space: pre-wrap; word-break: break-all; line-height: 1.5;">
-        ${highlightedText}
+      <div id="logContent" class="log-content-formatted">
+        ${formattedLogText.content}
       </div>
     `;
     
     detailContainer.innerHTML = content;
     
     // 4. DOM 업데이트가 완료된 후 스크롤 이동
-    if (firstMatchId) {
+    if (formattedLogText.highlightId) {
       requestAnimationFrame(() => {
-        const highlightedEl = document.getElementById(firstMatchId);
+        const highlightedEl = document.getElementById(formattedLogText.highlightId);
         if (highlightedEl) {
           highlightedEl.scrollIntoView({
             behavior: 'smooth',
@@ -1134,6 +1100,207 @@ function updateDetailContent() {
 // 정규식 이스케이프
 function escapeRegex(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 로그 내용을 실제 로그 cat처럼 포맷팅 (현재 로그 강조 버전)
+function formatLogContentWithHighlight(logText, targetText, currentLogText) {
+  const lines = logText.split('\n');
+  let formattedLines = [];
+  let highlightId = null;
+  let lineNumber = 1;
+  
+  // 타겟 텍스트를 정규식으로 변환 (멀티라인 지원)
+  const escapedTargetText = escapeRegex(targetText);
+  const targetRegex = new RegExp(escapedTargetText, 'g');
+  
+  // 현재 로그의 첫 번째 라인으로 현재 로그 위치 찾기
+  const currentLogFirstLine = currentLogText.split('\n')[0].trim();
+  let currentLogFound = false;
+  let currentLogLineNumber = -1;
+  
+  lines.forEach((line, index) => {
+    if (line.trim() === '') {
+      // 빈 줄은 그대로 유지
+      formattedLines.push('<div class="log-line empty-line">&nbsp;</div>');
+      return;
+    }
+    
+    // 현재 선택된 로그인지 확인
+    const isCurrentLog = !currentLogFound && line.trim() === currentLogFirstLine;
+    if (isCurrentLog) {
+      currentLogFound = true;
+      currentLogLineNumber = lineNumber;
+    }
+    
+    // 로그 레벨 및 타임스탬프 감지
+    const logLevel = detectLogLevel(line);
+    const timestamp = extractTimestamp(line);
+    
+    // 줄 번호 표시
+    const lineNumberDisplay = `<span class="line-number">${String(lineNumber).padStart(4, ' ')}</span>`;
+    
+    // 타겟 텍스트 하이라이트
+    let processedLine = escapeHtml(line);
+    let isHighlighted = false;
+    
+    processedLine = processedLine.replace(targetRegex, (match) => {
+      isHighlighted = true;
+      if (highlightId === null) {
+        highlightId = `highlight-${index}`;
+        return `<span id="${highlightId}" class="log-highlight-target">${match}</span>`;
+      }
+      return `<span class="log-highlight-target">${match}</span>`;
+    });
+    
+    // 로그 레벨별 색상 적용
+    if (timestamp) {
+      processedLine = processedLine.replace(timestamp, `<span class="log-timestamp">${timestamp}</span>`);
+    }
+    
+    if (logLevel.level !== 'UNKNOWN') {
+      const levelPattern = new RegExp(`\\b${escapeRegex(logLevel.level)}\\b`, 'g');
+      processedLine = processedLine.replace(levelPattern, `<span class="log-level ${logLevel.class}">${logLevel.level}</span>`);
+    }
+    
+    // Exception 스택 트레이스 처리
+    const isStackTrace = /^\s*at\s+/.test(line) || /^\s*Caused by:/.test(line) || /^\s*Suppressed:/.test(line);
+    
+    // 현재 로그라면 특별한 클래스 추가
+    let lineClass = '';
+    if (isCurrentLog) {
+      lineClass = 'log-line highlighted current-selected-log';
+      // 현재 로그에 ID 부여 (스크롤용)
+      if (highlightId === null) {
+        highlightId = `current-log-${index}`;
+      }
+    } else if (isHighlighted) {
+      lineClass = 'log-line highlighted';
+    } else if (isStackTrace) {
+      lineClass = 'log-line stack-trace';
+    } else if (logLevel.class) {
+      lineClass = `log-line ${logLevel.class}`;
+    } else {
+      lineClass = 'log-line';
+    }
+    
+    const lineId = isCurrentLog ? `id="${highlightId || `current-log-${index}`}"` : '';
+    
+    formattedLines.push(`<div class="${lineClass}" ${lineId}>${lineNumberDisplay}<span class="log-content">${processedLine}</span></div>`);
+    lineNumber++;
+  });
+  
+  return {
+    content: formattedLines.join(''),
+    highlightId: highlightId,
+    currentLogLineNumber: currentLogLineNumber
+  };
+}
+
+// 로그 내용을 실제 로그 cat처럼 포맷팅
+function formatLogContent(logText, targetText) {
+  const lines = logText.split('\n');
+  let formattedLines = [];
+  let highlightId = null;
+  let lineNumber = 1;
+  
+  // 타겟 텍스트를 정규식으로 변환 (멀티라인 지원)
+  const escapedTargetText = escapeRegex(targetText);
+  const targetRegex = new RegExp(escapedTargetText, 'g');
+  
+  lines.forEach((line, index) => {
+    if (line.trim() === '') {
+      // 빈 줄은 그대로 유지
+      formattedLines.push('<div class="log-line empty-line">&nbsp;</div>');
+      return;
+    }
+    
+    // 로그 레벨 및 타임스탬프 감지
+    const logLevel = detectLogLevel(line);
+    const timestamp = extractTimestamp(line);
+    
+    // 줄 번호 표시 (선택적)
+    const lineNumberDisplay = `<span class="line-number">${String(lineNumber).padStart(4, ' ')}</span>`;
+    
+    // 타겟 텍스트 하이라이트
+    let processedLine = escapeHtml(line);
+    let isHighlighted = false;
+    
+    processedLine = processedLine.replace(targetRegex, (match) => {
+      isHighlighted = true;
+      if (highlightId === null) {
+        highlightId = `highlight-${index}`;
+        return `<span id="${highlightId}" class="log-highlight-target">${match}</span>`;
+      }
+      return `<span class="log-highlight-target">${match}</span>`;
+    });
+    
+    // 로그 레벨별 색상 적용
+    if (timestamp) {
+      processedLine = processedLine.replace(timestamp, `<span class="log-timestamp">${timestamp}</span>`);
+    }
+    
+    if (logLevel.level !== 'UNKNOWN') {
+      const levelPattern = new RegExp(`\\b${escapeRegex(logLevel.level)}\\b`, 'g');
+      processedLine = processedLine.replace(levelPattern, `<span class="log-level ${logLevel.class}">${logLevel.level}</span>`);
+    }
+    
+    // Exception 스택 트레이스 처리
+    const isStackTrace = /^\s*at\s+/.test(line) || /^\s*Caused by:/.test(line) || /^\s*Suppressed:/.test(line);
+    
+    const lineClass = isHighlighted ? 'log-line highlighted' : 
+                     isStackTrace ? 'log-line stack-trace' :
+                     logLevel.class ? `log-line ${logLevel.class}` : 'log-line';
+    
+    formattedLines.push(`<div class="${lineClass}">${lineNumberDisplay}<span class="log-content">${processedLine}</span></div>`);
+    lineNumber++;
+  });
+  
+  return {
+    content: formattedLines.join(''),
+    highlightId: highlightId
+  };
+}
+
+// 로그 레벨 감지
+function detectLogLevel(line) {
+  const levels = [
+    { pattern: /\b(FATAL|SEVERE)\b/i, level: 'FATAL', class: 'fatal' },
+    { pattern: /\b(ERROR)\b/i, level: 'ERROR', class: 'error' },
+    { pattern: /\b(WARN|WARNING)\b/i, level: 'WARN', class: 'warn' },
+    { pattern: /\b(INFO)\b/i, level: 'INFO', class: 'info' },
+    { pattern: /\b(DEBUG)\b/i, level: 'DEBUG', class: 'debug' },
+    { pattern: /\b(TRACE)\b/i, level: 'TRACE', class: 'trace' },
+    { pattern: /Exception|Error:/i, level: 'EXCEPTION', class: 'exception' }
+  ];
+  
+  for (const levelDef of levels) {
+    if (levelDef.pattern.test(line)) {
+      return { level: levelDef.level, class: levelDef.class };
+    }
+  }
+  
+  return { level: 'UNKNOWN', class: '' };
+}
+
+// 타임스탬프 추출
+function extractTimestamp(line) {
+  // 다양한 타임스탬프 패턴 지원
+  const patterns = [
+    /\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[.,]\d{3}/,  // 2024-01-01 12:34:56.789
+    /\d{2}:\d{2}:\d{2}[.,]\d{3}/,                        // 12:34:56.789
+    /\d{2}:\d{2}:\d{2}/,                                 // 12:34:56
+    /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,             // ISO format
+    /\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\]/        // [2024-01-01 12:34:56]
+  ];
+  
+  for (const pattern of patterns) {
+    const match = line.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+  
+  return null;
 }
 
 // 3단계: AI 분석 모달
@@ -1191,6 +1358,103 @@ function showAIAnalysisModal(logText) {
   modal.open();
 }
 
+// AI 분석용 프롬프트 생성 함수
+function generateAnalysisPrompt(logText) {
+  // 로그에서 INFO, Exception 패턴 감지
+  const hasException = /Exception|Error:|ERROR|FATAL|SQLException|NullPointerException|RuntimeException|IllegalArgumentException|ClassNotFoundException|IOException|OutOfMemoryError|StackOverflowError/i.test(logText);
+  const hasInfo = /INFO|Debug|DEBUG|TRACE|처리|요청|응답|시작|완료|성공/i.test(logText);
+  
+  let prompt = `다음은 시스템 로그 데이터입니다. 전문적인 로그 분석 전문가로서 상세하게 분석해주세요.
+
+===== 로그 데이터 =====
+${logText}
+
+===== 분석 요청사항 =====`;
+
+  if (hasException) {
+    prompt += `
+🔴 Exception/Error 중심 분석:
+1. **Exception 유형 및 발생 원인 분석**
+   - Exception의 정확한 유형과 발생 위치 식별
+   - Root Cause 분석 (근본 원인 파악)
+   - Stack Trace 상세 분석 (있는 경우)
+
+2. **영향도 및 위험성 평가**
+   - 시스템에 미치는 영향 범위
+   - 데이터 손실 가능성
+   - 서비스 장애 여부
+
+3. **해결방안 제시**
+   - 즉시 해결방안 (Hotfix)
+   - 근본적 해결방안 (장기적 개선)
+   - 코드 수정 가이드라인
+   - 예방책 및 모니터링 방안
+
+4. **관련 시스템 체크포인트**
+   - 확인해야 할 관련 로그 위치
+   - 점검이 필요한 시스템 컴포넌트`;
+
+  } else if (hasInfo) {
+    prompt += `
+🔵 INFO 로그 상세 분석:
+1. **비즈니스 프로세스 분석**
+   - 수행된 업무 프로세스 식별
+   - 처리 시간 및 성능 분석
+   - 데이터 흐름 파악
+
+2. **시스템 동작 상태 분석**
+   - 정상 동작 여부 확인
+   - 성능 지표 분석 (있는 경우)
+   - 리소스 사용량 체크
+
+3. **패턴 및 트렌드 분석**
+   - 반복되는 작업 패턴
+   - 시간대별 특성 분석
+   - 이상 징후 탐지
+
+4. **최적화 포인트**
+   - 성능 개선 가능 영역
+   - 로그 레벨 조정 권장사항`;
+
+  } else {
+    prompt += `
+⚪ 종합 로그 분석:
+1. **로그 유형 및 내용 분석**
+   - 로그의 성격과 중요도 평가
+   - 주요 이벤트 식별
+   - 타임스탬프 및 순서 분석
+
+2. **시스템 상태 진단**
+   - 현재 시스템 상태 추정
+   - 잠재적 문제점 탐지
+   - 정상 동작 여부 판단
+
+3. **운영 관점 분석**
+   - 모니터링 포인트 제안
+   - 알림 설정 권장사항
+   - 로그 관리 개선점`;
+  }
+
+  prompt += `
+
+===== 응답 형식 =====
+**📊 분석 요약**
+- 핵심 내용을 3줄로 요약
+
+**🔍 상세 분석**
+- 위 요청사항에 따른 체계적 분석
+
+**💡 권장사항**
+- 구체적이고 실행 가능한 조치사항
+
+**⚠️ 주의사항**
+- 추가 모니터링이 필요한 부분
+
+모든 답변은 한글로 작성하고, 기술적 용어는 쉽게 설명해주세요.`;
+
+  return prompt;
+}
+
 // AI 분석 실행
 async function doDetailAIAnalyze(logText, aiModel, aiLength) {
   // Jarvis 스타일 로딩 모달
@@ -1219,7 +1483,7 @@ async function doDetailAIAnalyze(logText, aiModel, aiLength) {
       },
       body: JSON.stringify({
         model: aiModel,
-        text: `다음 로그를 심도있게 분석해주고 답변은 한글로 해줘 만약 로그에 Exception 있는 경우 Exception을 중심을 아주 자세하게 분석해줘 해결 방법까지 안내해줘 :\n\n${logText}`,
+        text: generateAnalysisPrompt(logText),
         limit: aiLength
       })
     });
@@ -1295,122 +1559,7 @@ async function doDetailAIAnalyze(logText, aiModel, aiLength) {
   }
 }
 
-// 기존 showDetailModal (삭제 예정, 호환성 유지)
-function showDetailModal_OLD() {
-  var title = '검색  >  ' + searchWordEl.value;
-  
-  // AI 설정 + 로그 컨텐츠를 함께 구성
-  const content = `
-    <div class="ai-settings">
-      <div class="ai-setting-group">
-        <label for="aiModel">AI MODEL</label>
-        <select id="aiModel" class="ai-select">
-          <option value="llama" selected>라마70B</option>
-          <option value="llama8b">라마8b</option>
-          <option value="qwen">큐원코드</option>
-        </select>
-      </div>
-      <div class="ai-setting-group">
-        <label for="aiLength">응답길이</label>
-        <input type="number" id="aiLength" class="ai-input" min="256" max="8192" value="4096">
-      </div>
-    </div>
-    <div class="wrap" id="list"></div>
-  `;
-  
-  const modal = new Modal({
-    title: title
-    , size: 'lg'
-    , closeOnEsc: true
-    , closeOnOverlay: true
-  });
-
-  const container = document.createElement('div');
-  container.innerHTML = content;
-  modal.setContent(container);
-
-  modal.setHeader([
-    {
-      label: 'AI 분석', 
-      variant: 'ghost', 
-      onClick: m => {
-        doAIAnalyzeFromModal(modal);
-      }
-    }
-  ]);
-
-  modal.setFooter([
-    {
-      label: '닫기', variant: 'primary', onClick: m => {
-        m.close();
-      }
-    }
-  ]);
-  modal.open();
-
-  // 데이타 조회. 구간별로~ 일단 하나만 가져와보자.
-  var searchWord = searchWordEl.value;
-  console.log("searchObj.searchLineStartByteArray.length = ", searchObj.searchLineStartByteArray.length);
-
-  console.log("selectTimeRangeStartIndex = ", selectTimeRangeStartIndex);
-  console.log("selectTimeRangeEndIndex = ", selectTimeRangeEndIndex);
-
-  var startTimeRangeStartByte = selectTimeRangeStartIndex == 0 ? 0 : timeRangeObj.timeRangeEndByteArray[selectTimeRangeStartIndex-1]+1;
-  var endTimeRangeEndByte = timeRangeObj.timeRangeEndByteArray[selectTimeRangeEndIndex];
-
-  console.log("startTimeRangeStartByte = ", startTimeRangeStartByte);
-  console.log("endTimeRangeEndByte = ", endTimeRangeEndByte);
-
-  var count = 0; 
-  for (var i = 0; i < searchObj.searchLineStartByteArray.length; i++) {
-    var startByte = searchObj.searchLineStartByteArray[i];
-    var endByte = searchObj.searchLineEndByteArray[i];
-    if (endByte == 0) {
-      break;
-    }
-
-    if(startByte >= startTimeRangeStartByte && startByte <= endTimeRangeEndByte){
-      getLine(container, startByte, endByte);
-      count++;
-
-      // 천라인까지만
-      if (count > 1000)
-        break;
-    }
-
-  }
-}
-
-async function getLine(container, startByte, endByte) {
-  const reader = logfile.slice(startByte, endByte).stream().getReader();
-  const decoder = new TextDecoder("utf-8");
-  let text = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    text += decoder.decode(value, { stream: true });
-  }
-  text += decoder.decode(); // flush
-  var replaceSearch = '<span class="textred">'+ searchWordEl.value +'</span>';
-  text = text.replaceAll(searchWordEl.value,replaceSearch);
-  
-  const list = container.querySelector('#list');
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.innerHTML = `
-        <div class="cardinfo">
-                <div class="row1">
-                        <div class="range wordwrap">${text}</div>
-                </div>
-        </div>
-  <div class="actions">
-    <button type="button">AI분석</button>
-        <button type="button">주변로그보기</button>
-  </div>
-        `;
-  list.appendChild(card);
-}
+// 기존 구식 모달 코드 제거됨
 
 // 차트 선택 해제
 function chartDragClear() {
@@ -1426,119 +1575,7 @@ function chartDragClear() {
   }
 }
 
-// AI 분석 (모달에서 호출)
-async function doAIAnalyzeFromModal(parentModal) {
-  const aiModel = document.getElementById('aiModel')?.value || 'llama';
-  const aiLength = parseInt(document.getElementById('aiLength')?.value || '4096');
-  
-  // 모든 range wordwrap 요소에서 텍스트 추출
-  const rangeElements = parentModal.body.querySelectorAll('.range.wordwrap');
-  if (rangeElements.length === 0) {
-    alert('분석할 로그 데이터가 없습니다.');
-    return;
-  }
-  
-  let promptText = '';
-  rangeElements.forEach(el => {
-    promptText += el.textContent + '\n';
-  });
-  
-  if (!promptText.trim()) {
-    alert('분석할 내용이 비어있습니다.');
-    return;
-  }
-  
-  // AI 결과 팝업 생성
-  const resultModal = new Modal({
-    title: '◆ AI 로그 분석 결과',
-    size: 'lg',
-    closeOnEsc: true,
-    closeOnOverlay: true
-  });
-  
-  // 로딩 화면
-  const loadingHtml = `
-    <div class="jarvis-loading">
-      <div class="jarvis-scanner"></div>
-      <div class="jarvis-data-stream"></div>
-      <div class="jarvis-rings">
-        <div class="ring"></div>
-        <div class="ring"></div>
-        <div class="ring"></div>
-      </div>
-      <div class="jarvis-text">AI 분석 중...</div>
-    </div>
-  `;
-  
-  const resultContainer = document.createElement('div');
-  resultContainer.innerHTML = loadingHtml;
-  resultModal.setContent(resultContainer);
-  
-  resultModal.setFooter([
-    {
-      label: '닫기',
-      variant: 'primary',
-      onClick: m => m.close()
-    }
-  ]);
-  
-  resultModal.open();
-  
-  // API 호출
-  try {
-    const response = await callLlmApi(promptText, aiModel, aiLength);
-    
-    // 결과 표시
-    resultContainer.innerHTML = `
-      <div class="ai-result-content">${response}</div>
-    `;
-  } catch (error) {
-    resultContainer.innerHTML = `
-      <div class="ai-result-content" style="color: #ff6464;">
-        ❌ AI 분석 실패
-        
-        ${error}
-      </div>
-    `;
-  }
-}
-
-// AI API 호출 함수
-async function callLlmApi(text, model, limit) {
-  const apiUrl = 'http://10.10.22.81:8080/vllm_chat';
-  
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        text: text,
-        model: model,
-        limit: limit
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API 오류: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    return data.content || '응답 내용이 없습니다.';
-  } catch (error) {
-    throw `네트워크 오류: ${error.message}\n\nAPI URL: ${apiUrl}\n모델: ${model}\n응답길이: ${limit}`;
-  }
-}
-
-// AI 분석 (기본 - ANALYSIS OPTIONS 패널에서 호출)
-function doAIAnalyze() {
-  if (logfile == null) {
-    alert("파일을 먼저 선택해주세요.");
-  } else {
-    alert("먼저 로그를 검색하고 차트에서 시간대를 드래그한 후\n'상세정보' 팝업에서 AI 분석 기능을 사용할 수 있습니다.");
-  }
-}
+// 구식 AI 분석 코드 제거됨
 
 // 파일 분할 기능
 function doSplit() {
@@ -1729,194 +1766,5 @@ function downloadBlob(blob, filename) {
   });
 }
 
-// ==================== 실시간 메모리 모니터링 ====================
-
-class MemoryMonitor {
-  constructor(canvasId, options = {}) {
-    this.canvas = document.getElementById(canvasId);
-    if (!this.canvas) return;
-    
-    this.ctx = this.canvas.getContext('2d');
-    this.dataPoints = [];
-    this.maxDataPoints = 60; // 60초 데이터
-    this.colors = options.colors || {
-      primary: 'rgba(0, 217, 255, 1)',
-      secondary: 'rgba(138, 43, 226, 1)',
-      gradient1: 'rgba(0, 217, 255, 0.5)',
-      gradient2: 'rgba(0, 217, 255, 0)',
-      grid: 'rgba(0, 217, 255, 0.2)'
-    };
-    
-    this.initCanvas();
-  }
-  
-  initCanvas() {
-    const dpr = window.devicePixelRatio || 1;
-    const rect = this.canvas.getBoundingClientRect();
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
-    this.ctx.scale(dpr, dpr);
-    this.width = rect.width;
-    this.height = rect.height;
-  }
-  
-  addDataPoint(value) {
-    this.dataPoints.push(value);
-    if (this.dataPoints.length > this.maxDataPoints) {
-      this.dataPoints.shift();
-    }
-  }
-  
-  draw() {
-    const ctx = this.ctx;
-    const w = this.width;
-    const h = this.height;
-    
-    // 배경 클리어
-    ctx.clearRect(0, 0, w, h);
-    
-    // 그리드 그리기
-    ctx.strokeStyle = this.colors.grid;
-    ctx.lineWidth = 0.5;
-    
-    // 수평 그리드
-    for (let i = 0; i <= 4; i++) {
-      const y = (h / 4) * i;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-    
-    // 수직 그리드
-    for (let i = 0; i <= 10; i++) {
-      const x = (w / 10) * i;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    
-    if (this.dataPoints.length < 2) return;
-    
-    // 그라디언트 영역 그리기
-    const gradient = ctx.createLinearGradient(0, 0, 0, h);
-    gradient.addColorStop(0, this.colors.gradient1);
-    gradient.addColorStop(1, this.colors.gradient2);
-    
-    ctx.beginPath();
-    ctx.moveTo(0, h);
-    
-    this.dataPoints.forEach((point, i) => {
-      const x = (w / (this.maxDataPoints - 1)) * i;
-      const y = h - (point / 100) * h;
-      if (i === 0) {
-        ctx.lineTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    });
-    
-    ctx.lineTo(w, h);
-    ctx.closePath();
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    
-    // 라인 그리기
-    ctx.beginPath();
-    ctx.strokeStyle = this.colors.primary;
-    ctx.lineWidth = 2;
-    ctx.shadowColor = this.colors.primary;
-    ctx.shadowBlur = 10;
-    
-    this.dataPoints.forEach((point, i) => {
-      const x = (w / (this.maxDataPoints - 1)) * i;
-      const y = h - (point / 100) * h;
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    });
-    
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    
-    // 현재 포인트 강조
-    if (this.dataPoints.length > 0) {
-      const lastPoint = this.dataPoints[this.dataPoints.length - 1];
-      const x = w;
-      const y = h - (lastPoint / 100) * h;
-      
-      ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
-      ctx.fillStyle = this.colors.primary;
-      ctx.fill();
-      ctx.strokeStyle = this.colors.secondary;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-  }
-}
-
-// 메모리 모니터 인스턴스
-let heapMonitor;
-
-// 메모리 모니터링 시작
-function initMemoryMonitoring() {
-  // Canvas 초기화
-  heapMonitor = new MemoryMonitor('heapCanvas', {
-    colors: {
-      primary: 'rgba(0, 217, 255, 1)',
-      secondary: 'rgba(138, 43, 226, 1)',
-      gradient1: 'rgba(0, 217, 255, 0.4)',
-      gradient2: 'rgba(0, 217, 255, 0)',
-      grid: 'rgba(0, 217, 255, 0.15)'
-    }
-  });
-  
-  // 1초마다 메모리 정보 업데이트
-  setInterval(updateMemoryInfo, 1000);
-}
-
-function updateMemoryInfo() {
-  // Performance Memory API 지원 확인
-  if (performance.memory) {
-    const mem = performance.memory;
-    const usedJSHeap = (mem.usedJSHeapSize / 1048576).toFixed(1); // MB
-    const totalJSHeap = (mem.totalJSHeapSize / 1048576).toFixed(1);
-    const limitJSHeap = (mem.jsHeapSizeLimit / 1048576).toFixed(1);
-    const usagePercent = ((mem.usedJSHeapSize / mem.jsHeapSizeLimit) * 100).toFixed(1);
-    
-    // Heap Memory 업데이트
-    document.getElementById('heapUsed').textContent = `${usedJSHeap} MB`;
-    document.getElementById('heapTotal').textContent = `${totalJSHeap} MB`;
-    document.getElementById('heapLimit').textContent = `${limitJSHeap} MB`;
-    
-    const heapPercentEl = document.getElementById('heapPercent');
-    heapPercentEl.textContent = `${usagePercent}%`;
-    updatePercentColor(heapPercentEl, parseFloat(usagePercent));
-    
-    // 차트 업데이트
-    if (heapMonitor) {
-      heapMonitor.addDataPoint(parseFloat(usagePercent));
-      heapMonitor.draw();
-    }
-  } else {
-    // Performance Memory API 미지원 브라우저
-    const heapStatusEl = document.getElementById('heapStatus');
-    if (heapStatusEl) {
-      heapStatusEl.textContent = 'NOT SUPPORTED';
-    }
-  }
-}
-
-function updatePercentColor(element, percent) {
-  element.classList.remove('warning', 'danger');
-  if (percent >= 80) {
-    element.classList.add('danger');
-  } else if (percent >= 60) {
-    element.classList.add('warning');
-  }
-}
+// 메모리 모니터링 기능 제거됨
 

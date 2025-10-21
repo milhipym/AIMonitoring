@@ -219,12 +219,12 @@ var workerSource = `
         lineIndex: lineIndex,
         searchLineSize:searchLineIndex,
         preview: textBuffer.length > 200 ? textBuffer.slice(-100) : textBuffer, 
-        // done 용
-        searchLineArray: kind == "done" ? searchLineArray : null,
+        // done 용 - 실제 사용된 크기만큼만 slice해서 전달
+        searchLineArray: kind == "done" ? searchLineArray.slice(0, searchLineIndex) : null,
         timeStart: kind == "done" ? timeStart : 0,
         timeLast: kind == "done" ? timeLast : 0,
-        searchLineStartByteArray: kind == "done" ? searchLineStartByteArray : null,
-        searchLineEndByteArray: kind == "done" ? searchLineEndByteArray : null,
+        searchLineStartByteArray: kind == "done" ? searchLineStartByteArray.slice(0, searchLineIndex) : null,
+        searchLineEndByteArray: kind == "done" ? searchLineEndByteArray.slice(0, searchLineIndex) : null,
       });
   }
 

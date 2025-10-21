@@ -785,12 +785,20 @@ function showSearchList(ev) {
             return; // 빈 로그는 건너뛰기
           }
           
+          // 타임스탬프 추출 (로그 전체에서 찾기)
+          const timestamp = extractLogTimestamp(log.text);
+          const timestampHtml = timestamp ? 
+            `<div style="position: absolute; top: 10px; left: 10px; background: rgba(0, 217, 255, 0.15); padding: 5px 12px; border-radius: 4px; border: 1px solid rgba(0, 217, 255, 0.4);">
+              <span style="color: #00d9ff; font-family: 'SF Mono', monospace; font-size: 13px; font-weight: bold;">⏰ ${timestamp}</span>
+            </div>` : '';
+          
           card.innerHTML = `
             <div class="cardinfo">
+              ${timestampHtml}
               <div style="position: absolute; top: 10px; right: 10px; z-index: 10;">
                 <button class="btn-detail" data-index="${idx}" style="padding: 5px 15px; background: #58a6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">상세보기</button>
               </div>
-              <div class="row1" style="padding-right: 100px;">
+              <div class="row1" style="padding-right: 100px; ${timestamp ? 'padding-top: 35px;' : ''}">
                 <div class="log-preview" style="font-family: monospace; font-size: 13px; color: #c9d1d9; white-space: pre-wrap; word-break: break-all;">${escapeHtml(previewText)}</div>
               </div>
             </div>
@@ -1326,7 +1334,7 @@ function detectLogLevel(line) {
   return { level: 'UNKNOWN', class: '' };
 }
 
-// 타임스탬프 추출
+// 타임스탬프 추출 (단일 라인용)
 function extractTimestamp(line) {
   // 다양한 타임스탬프 패턴 지원
   const patterns = [
@@ -1341,6 +1349,32 @@ function extractTimestamp(line) {
     const match = line.match(pattern);
     if (match) {
       return match[0];
+    }
+  }
+  
+  return null;
+}
+
+// 로그 전체 텍스트에서 타임스탬프 추출 (Exception 로그용)
+function extractLogTimestamp(logText) {
+  // 로그를 줄 단위로 분리
+  const lines = logText.split('\n');
+  
+  // 첫 번째 줄부터 타임스탬프 찾기 (Exception 위의 ERROR/WARN/INFO 라인)
+  for (let i = 0; i < Math.min(lines.length, 5); i++) {
+    const line = lines[i];
+    
+    // HH:MM:SS.mmm 형식 찾기 (예: 05:37:13.555)
+    const timeMatch = line.match(/\d{2}:\d{2}:\d{2}\.\d{3}/);
+    if (timeMatch) {
+      return timeMatch[0];
+    }
+    
+    // 다른 타임스탬프 형식도 시도
+    const timestamp = extractTimestamp(line);
+    if (timestamp) {
+      // 브래킷 제거
+      return timestamp.replace(/[\[\]]/g, '');
     }
   }
   

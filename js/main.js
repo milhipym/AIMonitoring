@@ -780,10 +780,15 @@ function showSearchList(ev) {
           const lines = log.text.split('\n');
           const previewText = lines.length > 3 ? lines.slice(0, 3).join('\n') + '\n...' : log.text;
           
+          // 로그 내용이 비어있지 않은 경우에만 표시
+          if (!log.text || log.text.trim() === '') {
+            return; // 빈 로그는 건너뛰기
+          }
+          
           card.innerHTML = `
             <div class="cardinfo">
               <div style="position: absolute; top: 10px; right: 10px; z-index: 10;">
-                <button class="btn-detail" data-index="${log.index}" style="padding: 5px 15px; background: #58a6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">상세보기</button>
+                <button class="btn-detail" data-index="${idx}" style="padding: 5px 15px; background: #58a6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">상세보기</button>
               </div>
               <div class="row1" style="padding-right: 100px;">
                 <div class="log-preview" style="font-family: monospace; font-size: 13px; color: #c9d1d9; white-space: pre-wrap; word-break: break-all;">${escapeHtml(previewText)}</div>
@@ -864,6 +869,12 @@ async function getLogsInTimeRange(startIdx, endIdx, page = 1) {
     const logEnd = searchObj.searchLineEndByteArray[i];
     const logText = await readLogSegment(logStart, logEnd);
     
+    // 빈 로그는 건너뛰기
+    if (!logText || logText.trim() === '') {
+      console.warn(`Empty log detected at index ${i}, start: ${logStart}, end: ${logEnd}`);
+      continue;
+    }
+    
     logs.push({
       index: i,
       startByte: logStart,
@@ -874,6 +885,7 @@ async function getLogsInTimeRange(startIdx, endIdx, page = 1) {
   }
   
   console.log('DEBUG: totalCount =', totalCount, ', logs.length =', logs.length, ', page =', page);
+  console.log('DEBUG: startByte =', startByte, ', endByte =', endByte);
   
   // 결과에 메타 정보 추가
   logs.total = totalCount;
@@ -896,11 +908,33 @@ async function loadExtraInfo(log) {
 
 // 로그 세그먼트 읽기
 function readLogSegment(start, end) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    if (!logfile) {
+      console.error('logfile is null');
+      resolve('');
+      return;
+    }
+    
+    if (start < 0 || end < 0 || start > end) {
+      console.error(`Invalid byte range: start=${start}, end=${end}`);
+      resolve('');
+      return;
+    }
+    
+    if (end > logfile.size) {
+      console.warn(`End byte ${end} exceeds file size ${logfile.size}, adjusting...`);
+      end = logfile.size;
+    }
+    
     const slice = logfile.slice(start, end);
     const reader = new FileReader();
     reader.onload = (e) => {
-      resolve(e.target.result);
+      const result = e.target.result || '';
+      resolve(result);
+    };
+    reader.onerror = (e) => {
+      console.error('FileReader error:', e);
+      resolve('');
     };
     reader.readAsText(slice);
   });

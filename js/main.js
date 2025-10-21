@@ -1200,18 +1200,21 @@ function formatLogContentWithHighlight(logText, searchWord, currentLogText) {
     // 줄 번호 표시
     const lineNumberDisplay = `<span class="line-number">${String(lineNumber).padStart(4, ' ')}</span>`;
     
-    // 타겟 텍스트 하이라이트
+    // 타겟 텍스트 하이라이트 (선택된 로그에서만)
     let processedLine = escapeHtml(line);
     let isHighlighted = false;
     
-    processedLine = processedLine.replace(targetRegex, (match) => {
-      isHighlighted = true;
-      if (highlightId === null) {
-        highlightId = `highlight-${index}`;
-        return `<span id="${highlightId}" class="log-highlight-target">${match}</span>`;
-      }
-      return `<span class="log-highlight-target">${match}</span>`;
-    });
+    // 현재 선택된 로그 라인에서만 검색어 하이라이트 적용
+    if (isCurrentLog) {
+      processedLine = processedLine.replace(targetRegex, (match) => {
+        isHighlighted = true;
+        if (highlightId === null) {
+          highlightId = `highlight-${index}`;
+          return `<span id="${highlightId}" class="log-highlight-target">${match}</span>`;
+        }
+        return `<span class="log-highlight-target">${match}</span>`;
+      });
+    }
     
     // 로그 레벨별 색상 적용
     if (timestamp) {

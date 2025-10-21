@@ -715,10 +715,10 @@ function showSearchList(ev) {
         
         const content = `
           <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
-          ${totalPages > 1 ? `<div style="margin-bottom: 15px; display: justify-content: flex-end; align-items: center; gap: 10px;">
-            <button id="btnPrevPage" class="btn secondary" style="padding: 5px 8px; width: 250px; height: 40px" ${page === 1 ? 'disabled' : ''}>◀ 이전 페이지</button>
-            <strong><span style="color: #00d9ff; font-size: 6px white-space: nowrap;  padding-left: 15px; padding-right: 15px;">${page} / ${totalPages}</span></strong>
-            <button id="btnNextPage" class="btn secondary" style="padding: 5px 8px; width: 250px; height: 40px" ${!hasMore ? 'disabled' : ''}>다음 페이지 ▶</button>
+          ${totalPages > 1 ? `<div style="margin-bottom: 15px; display: flex; justify-content: center; align-items: center; gap: 10px;">
+            <button id="btnPrevPage" class="btn secondary" style="padding: 8px 20px; min-width: 120px;" ${page === 1 ? 'disabled' : ''}>◀ 이전</button>
+            <strong><span style="color: #00d9ff; font-size: 16px; white-space: nowrap; padding: 0 20px;">${page} / ${totalPages}</span></strong>
+            <button id="btnNextPage" class="btn secondary" style="padding: 8px 20px; min-width: 120px;" ${!hasMore ? 'disabled' : ''}>다음 ▶</button>
           </div>` : ''}
           <div class="wrap" id="logRowList" style="max-height: 580px; overflow-y: auto;"></div>
         `;

@@ -1166,8 +1166,8 @@ function formatLogContentWithHighlight(logText, searchWord, currentLogText) {
   // 검색어에 따라 하이라이트 패턴 결정
   let targetRegex;
   if (searchWord === 'Exception' || searchWord === 'java.lang.Exception') {
-    // Exception 검색 시 Exception 키워드 하이라이트
-    targetRegex = /Exception|Error/gi;
+    // Exception 검색 시 Exception 키워드만 하이라이트
+    targetRegex = /Exception/gi;
   } else {
     // 일반 검색어는 그대로 사용
     const escapedSearchWord = escapeRegex(searchWord);

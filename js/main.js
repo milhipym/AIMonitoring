@@ -1102,7 +1102,9 @@ function updateDetailContent() {
     const currentLogText = currentLog.text;
     
     // 3. 로그 내용을 실제 로그처럼 포맷팅 (현재 로그 강조)
-    const formattedLogText = formatLogContentWithHighlight(surroundingText, prieviwText, currentLogText);
+    // 실제 검색어를 사용 (미리보기 텍스트가 아님)
+    const searchWord = searchWordEl.value;
+    const formattedLogText = formatLogContentWithHighlight(surroundingText, searchWord, currentLogText);
     
     // 3. 로그 내용과 UI를 결합
     const content = `
@@ -1155,15 +1157,22 @@ function escapeRegex(string) {
 }
 
 // 로그 내용을 실제 로그 cat처럼 포맷팅 (현재 로그 강조 버전)
-function formatLogContentWithHighlight(logText, targetText, currentLogText) {
+function formatLogContentWithHighlight(logText, searchWord, currentLogText) {
   const lines = logText.split('\n');
   let formattedLines = [];
   let highlightId = null;
   let lineNumber = 1;
   
-  // 타겟 텍스트를 정규식으로 변환 (멀티라인 지원)
-  const escapedTargetText = escapeRegex(targetText);
-  const targetRegex = new RegExp(escapedTargetText, 'g');
+  // 검색어에 따라 하이라이트 패턴 결정
+  let targetRegex;
+  if (searchWord === 'Exception' || searchWord === 'java.lang.Exception') {
+    // Exception 검색 시 Exception 키워드 하이라이트
+    targetRegex = /Exception|Error/gi;
+  } else {
+    // 일반 검색어는 그대로 사용
+    const escapedSearchWord = escapeRegex(searchWord);
+    targetRegex = new RegExp(escapedSearchWord, 'gi');
+  }
   
   // 현재 로그의 첫 번째 라인으로 현재 로그 위치 찾기
   const currentLogFirstLine = currentLogText.split('\n')[0].trim();

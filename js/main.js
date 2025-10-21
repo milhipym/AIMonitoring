@@ -852,6 +852,16 @@ async function getLogsInTimeRange(startIdx, endIdx, page = 1) {
     const logStart = searchObj.searchLineStartByteArray[i];
     const logEnd = searchObj.searchLineEndByteArray[i];
     
+    // 유효하지 않은 바이트 범위 건너뛰기 (0, 0 또는 잘못된 범위)
+    if (logStart === 0 && logEnd === 0) {
+      continue;
+    }
+    
+    if (logStart < 0 || logEnd < 0 || logStart > logEnd) {
+      console.warn(`Invalid byte range at index ${i}: start=${logStart}, end=${logEnd}`);
+      continue;
+    }
+    
     if (logStart >= startByte && logEnd <= endByte) {
       rangeIndices.push(i);
     }
